@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>徒步去 - 探索最美徒步路线</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        /* 全局样式与变量 */
+        :root {
+            --primary-color: #2d5016; /* 森林绿 */
+            --secondary-color: #5b8c3a; /* 浅森林绿 */
+            --accent-color: #e67e22; /* 徒步橙 */
+            --light-bg: #f9f7f2; /* 米白背景 */
+            --dark-text: #2c3e50; /* 深蓝灰 */
+            --light-text: #7f8c8d; /* 浅灰 */
+            --white: #ffffff;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+            --border-radius: 12px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: var(--dark-text);
+            background-color: var(--light-bg);
+        }
+        
+        a {
+            text-decoration: none;
+            color: inherit;
+            transition: var(--transition);
+        }
+        
+        ul {
+            list-style: none;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* 隐藏所有页面，只显示活动页面 */
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* 头部样式 */
+        header {
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .logo i {
+            color: var(--accent-color);
+            margin-right: 10px;
+            font-size: 1.8rem;
+        }
+        
+        nav ul {
+            display: flex;
+        }
+        
+        nav ul li {
+            margin-left: 1.8rem;
+        }
+        
+        nav ul li a {
+            padding: 0.5rem 0;
+            position: relative;
+            font-weight: 500;
+        }
+        
+        nav ul li a:hover {
+            color: var(--accent-color);
+        }
+        
+        nav ul li a.active {
+            color: var(--accent-color);
+        }
+        
+        nav ul li a.active::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background-color: var(--accent-color);
+            bottom: 0;
+            left: 0;
+            border-radius: 2px;
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        /* 主内容区样式 */
+        main {
+            min-height: calc(100vh - 140px);
+            padding: 2rem 0 3rem;
+        }
+        
+        .page-title {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            color: var(--primary-color);
+            position: relative;
+            padding-bottom: 1rem;
+        }
+        
+        .page-title::after {
+            content: '';
+            position: absolute;
+            width: 100px;
+            height: 4px;
+            background-color: var(--accent-color);
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 2px;
+        }
+        
+        /* 首页样式 */
+        .hero {
+            background: linear-gradient(rgba(45, 80, 22, 0.85), rgba(45, 80, 22, 0.9)), url('https://images.unsplash.com/photo-1551632811-561732d1e306?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80');
+            background-size: cover;
+            background-position: center 30%;
+            color: var(--white);
+            text-align: center;
+            padding: 5rem 2rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 3rem;
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(45, 80, 22, 0.7) 0%, rgba(91, 140, 58, 0.5) 100%);
+            z-index: 1;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1.2rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .hero p {
+            font-size: 1.3rem;
+            max-width: 700px;
+            margin: 0 auto 2.5rem;
+            opacity: 0.95;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn {
+            display: inline-block;
+            background-color: var(--accent-color);
+            color: var(--white);
+            padding: 0.9rem 2.2rem;
+            border-radius: 50px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 1.05rem;
+            box-shadow: 0 4px 10px rgba(230, 126, 34, 0.3);
+        }
+        
+        .btn:hover {
+            background-color: #d35400;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2.5rem;
+            margin-top: 3rem;
+        }
+        
+        .feature-card {
+            background-color: var(--white);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            text-align: center;
+            border-top: 4px solid var(--secondary-color);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--secondary-color), var(--accent-color));
+            z-index: 1;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12);
+        }
+        
+        .feature-icon {
+            font-size: 2.8rem;
+            color: var(--secondary-color);
+            margin-bottom: 1.2rem;
+            transition: var(--transition);
+        }
+        
+        .feature-card:hover .feature-icon {
+            transform: scale(1.1);
+            color: var(--accent-color);
+        }
+        
+        .feature-card h3 {
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            font-size: 1.4rem;
+        }
+        
+        /* 热门路线部分 */
+        .hot-routes {
+            margin-top: 4rem;
+        }
+        
+        .hot-routes h2 {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            color: var(--primary-color);
+            font-size: 2rem;
+        }
+        
+        .routes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2.5rem;
+        }
+        
+        .route-card {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .route-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        .route-img {
+            height: 200px;
+            width: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+        
+        .route-card:hover .route-img {
+            transform: scale(1.05);
+        }
+        
+        .route-content {
+            padding: 1.8rem;
+            position: relative;
+        }
+        
+        .route-tag {
+            display: inline-block;
+            background-color: rgba(91, 140, 58, 0.15);
+            color: var(--secondary-color);
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .route-card h3 {
+            margin-bottom: 0.8rem;
+            color: var(--primary-color);
+            font-size: 1.3rem;
+        }
+        
+        .route-card p {
+            color: var(--light-text);
+            margin-bottom: 1.2rem;
+            line-height: 1.6;
+        }
+        
+        .route-meta {
+            display: flex;
+            justify-content: space-between;
+            color: var(--light-text);
+            font-size: 0.9rem;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 1.2rem;
+        }
+        
+        .route-meta i {
+            margin-right: 5px;
+            color: var(--secondary-color);
+        }
+        
+        /* 列表页样式 */
+        .filter-section {
+            background-color: var(--white);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 2.5rem;
+        }
+        
+        .filter-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        .filter-btn {
+            padding: 0.7rem 1.7rem;
+            border: 2px solid var(--secondary-color);
+            background-color: transparent;
+            color: var(--secondary-color);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 600;
+        }
+        
+        .filter-btn:hover, .filter-btn.active {
+            background-color: var(--secondary-color);
+            color: var(--white);
+            transform: translateY(-2px);
+        }
+        
+        .items-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 2.5rem;
+        }
+        
+        .item-card {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .item-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        .item-img {
+            height: 240px;
+            width: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+        
+        .item-card:hover .item-img {
+            transform: scale(1.05);
+        }
+        
+        .item-content {
+            padding: 1.8rem;
+        }
+        
+        .item-tag {
+            display: inline-block;
+            background-color: rgba(91, 140, 58, 0.15);
+            color: var(--secondary-color);
+            padding: 0.5rem 1.2rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .item-card h3 {
+            margin-bottom: 0.8rem;
+            color: var(--primary-color);
+            font-size: 1.4rem;
+        }
+        
+        .item-card p {
+            color: var(--light-text);
+            margin-bottom: 1.2rem;
+            line-height: 1.7;
+        }
+        
+        .item-meta {
+            display: flex;
+            justify-content: space-between;
+            color: var(--light-text);
+            font-size: 0.9rem;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 1.2rem;
+        }
+        
+        .item-meta i {
+            margin-right: 5px;
+            color: var(--secondary-color);
+        }
+        
+        /* 详情页样式 */
+        .detail-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2.5rem;
+        }
+        
+        @media (min-width: 992px) {
+            .detail-container {
+                grid-template-columns: 2fr 1fr;
+            }
+        }
+        
+        .detail-main {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        
+        .detail-hero-img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+        
+        .detail-hero-img:hover {
+            transform: scale(1.02);
+        }
+        
+        .detail-content {
+            padding: 2.5rem;
+        }
+        
+        .detail-header {
+            margin-bottom: 2rem;
+        }
+        
+        .detail-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin-bottom: 1.2rem;
+        }
+        
+        .detail-tag {
+            background-color: rgba(91, 140, 58, 0.15);
+            color: var(--secondary-color);
+            padding: 0.5rem 1.2rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+        
+        .detail-tag:hover {
+            background-color: var(--secondary-color);
+            color: var(--white);
+            transform: translateY(-2px);
+        }
+        
+        .detail-header h1 {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+        
+        .detail-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2.5rem;
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.8rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-bottom: 0.3rem;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--light-text);
+            font-weight: 500;
+        }
+        
+        .detail-section {
+            margin-bottom: 2.5rem;
+        }
+        
+        .detail-section h2 {
+            color: var(--primary-color);
+            margin-bottom: 1.2rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid rgba(91, 140, 58, 0.2);
+            font-size: 1.5rem;
+        }
+        
+        .detail-section p, .detail-section ul {
+            margin-bottom: 1rem;
+            line-height: 1.7;
+        }
+        
+        .detail-section ul {
+            padding-left: 1.5rem;
+            list-style-type: none;
+        }
+        
+        .detail-section li {
+            margin-bottom: 0.8rem;
+            position: relative;
+            padding-left: 1.8rem;
+        }
+        
+        .detail-section li:before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--secondary-color);
+            font-weight: bold;
+        }
+        
+        .detail-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        
+        .sidebar-card {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+        
+        .sidebar-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .sidebar-card h3 {
+            color: var(--primary-color);
+            margin-bottom: 1.2rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid rgba(91, 140, 58, 0.2);
+            font-size: 1.3rem;
+        }
+        
+        .equipment-list li {
+            padding: 0.8rem 0;
+            border-bottom: 1px solid #f1f1f1;
+            display: flex;
+            align-items: center;
+        }
+        
+        .equipment-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .equipment-list li i {
+            color: var(--secondary-color);
+            margin-right: 0.8rem;
+            font-size: 0.9rem;
+        }
+        
+        /* 地图容器样式 */
+        .map-container {
+            height: 300px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            margin-top: 0.5rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        #route-map {
+            height: 100%;
+            width: 100%;
+            border-radius: var(--border-radius);
+        }
+        
+        .map-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .map-btn {
+            width: 36px;
+            height: 36px;
+            background-color: white;
+            border: none;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-color);
+            transition: var(--transition);
+        }
+        
+        .map-btn:hover {
+            background-color: var(--secondary-color);
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .map-legend {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+            background-color: white;
+            padding: 10px 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 0.8rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            margin-right: 8px;
+            border-radius: 50%;
+        }
+        
+        .route-start { background-color: #2ecc71; }
+        .route-end { background-color: #e74c3c; }
+        .route-line { background-color: #3498db; }
+        
+        /* 底部样式 */
+        footer {
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 3rem 0 1.5rem;
+            margin-top: 4rem;
+        }
+        
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2.5rem;
+            margin-bottom: 2.5rem;
+        }
+        
+        .footer-section h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            color: var(--accent-color);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+        
+        .footer-section h3::after {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 3px;
+            background-color: var(--accent-color);
+            bottom: 0;
+            left: 0;
+            border-radius: 2px;
+        }
+        
+        .footer-section p, .footer-section li {
+            margin-bottom: 0.8rem;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        
+        .footer-section li {
+            padding: 0.3rem 0;
+            transition: var(--transition);
+        }
+        
+        .footer-section li:hover {
+            opacity: 1;
+            transform: translateX(5px);
+        }
+        
+        .footer-section a:hover {
+            color: var(--accent-color);
+        }
+        
+        .social-icons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .social-icons a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transition: var(--transition);
+        }
+        
+        .social-icons a:hover {
+            background-color: var(--accent-color);
+            transform: translateY(-3px) scale(1.1);
+        }
+        
+        .copyright {
+            text-align: center;
+            padding-top: 1.8rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-wrap: wrap;
+            }
+            
+            nav {
+                display: none;
+                width: 100%;
+                margin-top: 1rem;
+            }
+            
+            nav.active {
+                display: block;
+            }
+            
+            nav ul {
+                flex-direction: column;
+            }
+            
+            nav ul li {
+                margin: 0;
+                margin-bottom: 0.8rem;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .hero h1 {
+                font-size: 2.2rem;
+            }
+            
+            .hero p {
+                font-size: 1.1rem;
+            }
+            
+            .detail-header h1 {
+                font-size: 2rem;
+            }
+            
+            .detail-stats {
+                gap: 1.5rem;
+            }
+            
+            .stat-value {
+                font-size: 1.8rem;
+            }
+            
+            .items-list {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* 页面切换按钮 */
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            color: var(--secondary-color);
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            transition: var(--transition);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            background-color: rgba(91, 140, 58, 0.1);
+        }
+        
+        .back-btn:hover {
+            color: var(--primary-color);
+            background-color: rgba(91, 140, 58, 0.2);
+            transform: translateX(-5px);
+        }
+        
+        .back-btn i {
+            margin-right: 0.5rem;
+        }
+        
+        /* 图片加载动画 */
+        .route-img, .item-img, .detail-hero-img {
+            animation: imageFadeIn 1s ease-out;
+        }
+        
+        @keyframes imageFadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        /* 加载指示器 */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: var(--secondary-color);
+        }
+        
+        .loading i {
+            font-size: 2rem;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 头部导航 -->
+    <header>
+        <div class="container header-content">
+            <div class="logo">
+                <i class="fas fa-hiking"></i>
+                <span>徒步去</span>
+            </div>
+            
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <nav id="mainNav">
+                <ul>
+                    <li><a href="#" class="nav-link active" data-page="home">首页</a></li>
+                    <li><a href="#" class="nav-link" data-page="list">路线列表</a></li>
+                    <li><a href="#" class="nav-link" data-page="detail">路线详情</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="container">
+        <!-- 首页 -->
+        <section id="home-page" class="page active">
+            <div class="hero">
+                <div class="hero-content">
+                    <h1>探索最美徒步路线</h1>
+                    <p>发现城市周边的自然步道，规划您的下一个周末徒步之旅。我们为您精选了各种难度和风景的路线，适合从新手到资深徒步爱好者。</p>
+                    <a href="#" class="btn nav-link" data-page="list">查看所有路线</a>
+                </div>
+            </div>
+            
+            <h2 class="page-title">为什么选择徒步？</h2>
+            
+            <div class="features">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-heartbeat"></i>
+                    </div>
+                    <h3>身心健康</h3>
+                    <p>徒步是有氧运动，能够增强心肺功能，降低压力，改善睡眠质量，同时接触大自然有助于心理健康。</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-mountain"></i>
+                    </div>
+                    <h3>探索自然</h3>
+                    <p>远离城市喧嚣，探索森林、山丘、溪流和湖泊，发现隐藏在身边的自然美景。</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3>社交体验</h3>
+                    <p>与朋友家人一起徒步，增进感情，或者参加我们的徒步社群，结识志同道合的户外爱好者。</p>
+                </div>
+            </div>
+            
+            <div class="hot-routes">
+                <h2>热门推荐路线</h2>
+                <div class="routes-grid">
+                    <!-- 热门路线会通过JavaScript动态生成 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 列表页 -->
+        <section id="list-page" class="page">
+            <a href="#" class="back-btn nav-link" data-page="home">
+                <i class="fas fa-arrow-left"></i> 返回首页
+            </a>
+            
+            <h1 class="page-title">徒步路线列表</h1>
+            
+            <div class="filter-section">
+                <div class="filter-options">
+                    <button class="filter-btn active" data-filter="all">全部路线</button>
+                    <button class="filter-btn" data-filter="easy">轻松路线</button>
+                    <button class="filter-btn" data-filter="medium">中等难度</button>
+                    <button class="filter-btn" data-filter="hard">挑战路线</button>
+                    <button class="filter-btn" data-filter="forest">森林步道</button>
+                    <button class="filter-btn" data-filter="mountain">山野路线</button>
+                </div>
+            </div>
+            
+            <div class="items-list">
+                <!-- 路线列表会通过JavaScript动态生成 -->
+            </div>
+        </section>
+
+        <!-- 详情页 -->
+        <section id="detail-page" class="page">
+            <a href="#" class="back-btn nav-link" data-page="list">
+                <i class="fas fa-arrow-left"></i> 返回列表
+            </a>
+            
+            <div class="detail-container">
+                <div class="detail-main">
+                    <img src="https://images.unsplash.com/photo-1551632811-561732d1e306?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80" alt="徒步路线" class="detail-hero-img" id="detail-hero-img">
+                    
+                    <div class="detail-content">
+                        <div class="detail-header">
+                            <div class="detail-tags" id="detail-tags">
+                                <!-- 标签会通过JavaScript动态生成 -->
+                            </div>
+                            <h1 id="detail-title">青龙山环线徒步</h1>
+                            <p id="detail-intro">一条风景绝佳的环山徒步路线，适合有一定徒步经验的爱好者。路线穿越茂密森林，途经多个观景台，可俯瞰整个城市风光。</p>
+                        </div>
+                        
+                        <div class="detail-stats">
+                            <div class="stat-item">
+                                <span class="stat-value" id="detail-length">12.5</span>
+                                <span class="stat-label">公里</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="detail-duration">4.5</span>
+                                <span class="stat-label">小时</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="detail-elevation">850</span>
+                                <span class="stat-label">爬升(米)</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="detail-difficulty">中等</span>
+                                <span class="stat-label">难度</span>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <h2>路线介绍</h2>
+                            <div id="detail-description">
+                                <!-- 路线介绍会通过JavaScript动态生成 -->
+                            </div>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <h2>路线亮点</h2>
+                            <ul id="detail-highlights">
+                                <!-- 亮点会通过JavaScript动态生成 -->
+                            </ul>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <h2>注意事项</h2>
+                            <div id="detail-notices">
+                                <!-- 注意事项会通过JavaScript动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="detail-sidebar">
+                    <div class="sidebar-card">
+                        <h3>必备装备</h3>
+                        <ul class="equipment-list" id="equipment-list">
+                            <!-- 装备列表会通过JavaScript动态生成 -->
+                        </ul>
+                    </div>
+                    
+                    <div class="sidebar-card">
+                        <h3>最佳季节</h3>
+                        <p id="best-season">春季和秋季是最佳徒步季节，气温适宜，风景优美。夏季建议早晨出发避免高温，冬季需注意防寒和路况。</p>
+                    </div>
+                    
+                    <div class="sidebar-card">
+                        <h3>路线地图</h3>
+                        <div class="map-container">
+                            <div id="route-map"></div>
+                            <div class="map-controls">
+                                <button class="map-btn" id="zoom-in" title="放大">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <button class="map-btn" id="zoom-out" title="缩小">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <button class="map-btn" id="reset-map" title="重置视图">
+                                    <i class="fas fa-home"></i>
+                                </button>
+                            </div>
+                            <div class="map-legend">
+                                <div class="legend-item">
+                                    <div class="legend-color route-start"></div>
+                                    <span>起点</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color route-end"></div>
+                                    <span>终点</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color route-line"></div>
+                                    <span>路线</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 底部 -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>关于我们</h3>
+                    <p>我们是一群热爱自然的徒步爱好者，致力于分享和探索城市周边的美丽徒步路线，让更多人享受户外运动的乐趣。</p>
+                    <div class="social-icons">
+                        <a href="#"><i class="fab fa-weixin"></i></a>
+                        <a href="#"><i class="fab fa-weibo"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-section">
+                    <h3>快速链接</h3>
+                    <ul>
+                        <li><a href="#" class="nav-link" data-page="home">首页</a></li>
+                        <li><a href="#" class="nav-link" data-page="list">路线列表</a></li>
+                        <li><a href="#" class="nav-link" data-page="detail">路线详情</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h3>安全贴士</h3>
+                    <ul>
+                        <li>提前查看天气预报</li>
+                        <li>准备充足的水和食物</li>
+                        <li>穿着合适的徒步鞋</li>
+                        <li>告知他人您的徒步计划</li>
+                        <li>携带基本急救用品</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="copyright">
+                <p>&copy; 2023 徒步去 - 周末徒步路线探索. 本网站内容仅供参考，徒步请注意安全。所有图片来自 Unsplash。</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 徒步路线数据 - 包含高质量精美图片和详细的路线坐标
+        const hikingRoutes = [
+            {
+                id: 1,
+                title: "青龙山环线徒步",
+                intro: "一条风景绝佳的环山徒步路线，适合有一定徒步经验的爱好者。路线穿越茂密森林，途经多个观景台，可俯瞰整个城市风光。",
+                description: "<p>青龙山环线是本地最受欢迎的徒步路线之一，全程约12.5公里，正常徒步时间约4-5小时。路线起点位于青龙山公园入口，沿途经过翠竹岭、观云台、飞瀑岩等景点。</p><p>这条路线大部分路段为自然土路和石阶，部分路段较为陡峭，需要一定的体力。中途有两处休息点，提供简单的补给和卫生间。</p><p>建议早晨8-9点开始徒步，这样可以在中午时分到达山顶观景台，欣赏最佳景色。全程路线标识清晰，不易迷路。</p>",
+                length: 12.5,
+                duration: 4.5,
+                elevation: 850,
+                difficulty: "medium",
+                tags: ["中等难度", "森林步道", "观景点", "环线"],
+                image: "https://images.unsplash.com/photo-1551632811-561732d1e306?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
+                highlights: ["山顶360度全景视野", "春季杜鹃花盛开", "古树群落", "清澈山泉"],
+                equipment: ["徒步鞋", "2升水", "能量零食", "防晒霜", "帽子", "登山杖", "简易急救包"],
+                notices: "<p>1. 部分路段较为陡峭，建议使用登山杖。</p><p>2. 夏季需注意防暑，携带足够饮水。</p><p>3. 雨天部分路段湿滑，不建议前往。</p><p>4. 路线中段无补给点，需提前准备食物。</p>",
+                bestSeason: "春季和秋季是最佳徒步季节，气温适宜，风景优美。夏季建议早晨出发避免高温，冬季需注意防寒和路况。",
+                location: { lat: 31.2304, lng: 121.4737 },
+                routePath: [
+                    [31.2304, 121.4737], // 起点
+                    [31.2320, 121.4750],
+                    [31.2345, 121.4762],
+                    [31.2360, 121.4775], // 观云台
+                    [31.2375, 121.4780],
+                    [31.2390, 121.4770],
+                    [31.2385, 121.4755], // 飞瀑岩
+                    [31.2370, 121.4740],
+                    [31.2350, 121.4730],
+                    [31.2330, 121.4725],
+                    [31.2310, 121.4728],
+                    [31.2304, 121.4737]  // 终点（返回起点，环线）
+                ]
+            },
+            {
+                id: 2,
+                title: "西山古道休闲徒步",
+                intro: "一条历史悠久的古道徒步路线，沿途可见古代驿道遗迹，适合家庭和初学者体验。",
+                description: "<p>西山古道始建于明代，曾是连接两地的重要通道。如今保留了约8公里的石板路段，沿途风景优美，坡度平缓。</p><p>这条路线非常适合家庭出游和徒步初学者，全程约8公里，徒步时间约2-3小时。沿途有清晰的指示牌和多个休息点。</p>",
+                length: 8,
+                duration: 2.5,
+                elevation: 300,
+                difficulty: "easy",
+                tags: ["轻松路线", "历史遗迹", "家庭友好", "石板路"],
+                image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
+                highlights: ["明代石板古道", "古驿站遗址", "溪流景观", "秋季红叶"],
+                equipment: ["舒适运动鞋", "1.5升水", "防晒用品", "相机"],
+                notices: "<p>1. 路线平缓，适合各年龄段人群。</p><p>2. 雨季道路湿滑，需小心行走。</p>",
+                bestSeason: "四季皆宜，春秋最佳。春季野花盛开，秋季红叶满山。",
+                location: { lat: 31.2356, lng: 121.4801 },
+                routePath: [
+                    [31.2356, 121.4801], // 起点
+                    [31.2365, 121.4810],
+                    [31.2370, 121.4820],
+                    [31.2375, 121.4830], // 古驿站
+                    [31.2380, 121.4840],
+                    [31.2390, 121.4845],
+                    [31.2400, 121.4840], // 观景点
+                    [31.2405, 121.4830],
+                    [31.2410, 121.4820]
+                ]
+            },
+            {
+                id: 3,
+                title: "天目峰挑战路线",
+                intro: "一条极具挑战性的高山徒步路线，适合经验丰富的徒步爱好者，登顶后可欣赏云海景观。",
+                description: "<p>天目峰挑战路线是本地难度最高的徒步路线之一，全程约15公里，海拔爬升超过1200米，需要较强体能和徒步经验。</p><p>路线从山脚开始，经过茂密森林、高山草甸和裸露岩壁，最终抵达海拔1560米的天目峰顶。山顶视野开阔，天气良好时可看到壮观的云海。</p>",
+                length: 15,
+                duration: 7,
+                elevation: 1200,
+                difficulty: "hard",
+                tags: ["挑战路线", "高山徒步", "云海景观", "专业级"],
+                image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
+                highlights: ["高山云海景观", "稀有高山植物", "日出日落观赏点", "专业级挑战"],
+                equipment: ["专业登山鞋", "3升水", "高能量食物", "防风外套", "头灯", "GPS设备", "全套急救包"],
+                notices: "<p>1. 仅建议有丰富徒步经验的爱好者尝试。</p><p>2. 天气变化快，需准备防风防雨装备。</p><p>3. 建议结伴而行，避免单独行动。</p><p>4. 冬季部分路段有积雪，需要专业装备。</p>",
+                bestSeason: "夏季和初秋是最佳季节，避开雨季和冬季。",
+                location: { lat: 31.2250, lng: 121.4850 },
+                routePath: [
+                    [31.2250, 121.4850], // 起点
+                    [31.2265, 121.4855],
+                    [31.2280, 121.4860],
+                    [31.2295, 121.4865], // 山腰休息点
+                    [31.2310, 121.4870],
+                    [31.2325, 121.4875],
+                    [31.2340, 121.4880], // 高山草甸
+                    [31.2355, 121.4885],
+                    [31.2370, 121.4890],
+                    [31.2385, 121.4895], // 峰顶
+                    [31.2390, 121.4900]
+                ]
+            },
+            {
+                id: 4,
+                title: "翠湖湿地生态路线",
+                intro: "一条平缓的湿地生态徒步路线，适合观鸟和自然爱好者，沿途有丰富的动植物资源。",
+                description: "<p>翠湖湿地生态路线全长约6公里，几乎全为平路，非常适合轻松徒步和自然观察。路线环绕翠湖湿地，设有多个观鸟点和自然教育展示牌。</p><p>这里是候鸟迁徙的重要停歇地，春秋季节可观察到数十种鸟类。路线中还设有浮桥和观景塔，提供不同角度的湿地景观。</p>",
+                length: 6,
+                duration: 2,
+                elevation: 50,
+                difficulty: "easy",
+                tags: ["轻松路线", "湿地生态", "观鸟", "家庭友好"],
+                image: "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
+                highlights: ["候鸟观察", "湿地生态", "自然教育", "浮桥体验"],
+                equipment: ["舒适鞋子", "1升水", "望远镜", "防晒帽", "驱蚊液"],
+                notices: "<p>1. 请勿惊扰鸟类和其他野生动物。</p><p>2. 遵守湿地保护规定，不离开指定步道。</p><p>3. 夏季蚊虫较多，建议使用驱蚊产品。</p>",
+                bestSeason: "春秋季节最佳，特别是候鸟迁徙期间（3-5月，9-11月）。",
+                location: { lat: 31.2400, lng: 121.4700 },
+                routePath: [
+                    [31.2400, 121.4700], // 起点
+                    [31.2405, 121.4705],
+                    [31.2410, 121.4710], // 观鸟点1
+                    [31.2415, 121.4715],
+                    [31.2420, 121.4720], // 浮桥
+                    [31.2425, 121.4725],
+                    [31.2430, 121.4730], // 观景塔
+                    [31.2425, 121.4735],
+                    [31.2420, 121.4740],
+                    [31.2415, 121.4735],
+                    [31.2410, 121.4730], // 观鸟点2
+                    [31.2405, 121.4725],
+                    [31.2400, 121.4720]
+                ]
+            },
+            {
+                id: 5,
+                title: "云岭山脉穿越",
+                intro: "一条中等难度的山脊徒步路线，沿途可见奇特花岗岩地貌和壮丽山谷景色。",
+                description: "<p>云岭山脉穿越路线全长约10公里，沿着山脊线行走，大部分路段视野开阔，可欣赏两侧山谷景色。路线中有多处花岗岩地貌景观，形态各异。</p><p>这条路线有一定挑战性，部分路段需要手脚并用攀爬岩石，但危险程度不高。全程约需4-5小时，适合有一定徒步经验的爱好者。</p>",
+                length: 10,
+                duration: 4.5,
+                elevation: 600,
+                difficulty: "medium",
+                tags: ["中等难度", "山脊徒步", "花岗岩地貌", "山谷景观"],
+                image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
+                highlights: ["花岗岩奇观", "山脊线徒步", "开阔视野", "秋季色彩丰富"],
+                equipment: ["防滑徒步鞋", "2升水", "能量棒", "手套", "防晒用品"],
+                notices: "<p>1. 部分路段需要简单攀爬，建议佩戴手套。</p><p>2. 山脊线无遮阴，晴天需注意防晒。</p><p>3. 大风天气不建议前往。</p>",
+                bestSeason: "春季和秋季最佳，夏季炎热，冬季可能有积雪。",
+                location: { lat: 31.2200, lng: 121.4900 },
+                routePath: [
+                    [31.2200, 121.4900], // 起点
+                    [31.2210, 121.4905],
+                    [31.2220, 121.4910], // 第一个山脊
+                    [31.2230, 121.4915],
+                    [31.2240, 121.4920], // 花岗岩景观
+                    [31.2250, 121.4925],
+                    [31.2260, 121.4930], // 最高点
+                    [31.2255, 121.4935],
+                    [31.2250, 121.4940],
+                    [31.2240, 121.4935],
+                    [31.2230, 121.4930]
+                ]
+            },
+            {
+                id: 6,
+                title: "竹海秘境探索",
+                intro: "一条穿越茂密竹林的幽静路线，空气清新，环境幽雅，适合冥想和放松身心。",
+                description: "<p>竹海秘境路线全长约7公里，全程穿梭在茂密的竹林中，环境清幽，空气负氧离子含量高。路线中有多处清泉和小溪，增添了几分灵动。</p><p>这条路线非常适合想要远离喧嚣、寻求宁静的徒步者。竹林中的小路平缓易行，几乎没有陡坡，适合各年龄段人群。</p>",
+                length: 7,
+                duration: 2.5,
+                elevation: 200,
+                difficulty: "easy",
+                tags: ["轻松路线", "竹林秘境", "空气清新", "冥想徒步"],
+                image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
+                highlights: ["竹海景观", "高负氧离子环境", "清泉小溪", "幽静小路"],
+                equipment: ["舒适鞋子", "1.5升水", "防潮垫", "轻便外套"],
+                notices: "<p>1. 竹林内湿度较高，注意防潮。</p><p>2. 雨后道路湿滑，需小心行走。</p><p>3. 保持安静，不惊扰竹林生态环境。</p>",
+                bestSeason: "夏季最佳，竹林内凉爽宜人；春季可看到竹笋破土而出的景象。",
+                location: { lat: 31.2150, lng: 121.4750 },
+                routePath: [
+                    [31.2150, 121.4750], // 起点
+                    [31.2155, 121.4755],
+                    [31.2160, 121.4760], // 竹林入口
+                    [31.2165, 121.4765],
+                    [31.2170, 121.4770], // 清泉点
+                    [31.2175, 121.4775],
+                    [31.2180, 121.4780], // 竹林深处
+                    [31.2185, 121.4785],
+                    [31.2190, 121.4790],
+                    [31.2195, 121.4795], // 终点
+                    [31.2190, 121.4800]
+                ]
+            }
+        ];
+
+        // DOM元素
+        const pages = {
+            home: document.getElementById('home-page'),
+            list: document.getElementById('list-page'),
+            detail: document.getElementById('detail-page')
+        };
+
+        const navLinks = document.querySelectorAll('.nav-link');
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const itemsList = document.querySelector('.items-list');
+        const routesGrid = document.querySelector('.routes-grid');
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mainNav = document.getElementById('mainNav');
+
+        // 地图相关变量
+        let map = null;
+        let routeLayer = null;
+        let startMarker = null;
+        let endMarker = null;
+        
+        // 当前显示的路线详情
+        let currentRoute = hikingRoutes[0];
+
+        // 初始化页面
+        function initPage() {
+            // 显示首页
+            showPage('home');
+            
+            // 生成热门路线（首页展示）
+            generateHotRoutes();
+            
+            // 生成路线列表
+            generateRouteList();
+            
+            // 绑定事件监听器
+            bindEvents();
+        }
+
+        // 显示指定页面
+        function showPage(pageId) {
+            // 隐藏所有页面
+            Object.values(pages).forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // 显示目标页面
+            pages[pageId].classList.add('active');
+            
+            // 更新导航链接状态
+            navLinks.forEach(link => {
+                if (link.dataset.page === pageId) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+            
+            // 如果是详情页，更新内容
+            if (pageId === 'detail') {
+                updateDetailPage();
+            }
+            
+            // 如果是列表页，重置筛选状态
+            if (pageId === 'list') {
+                document.querySelector('.filter-btn[data-filter="all"]').classList.add('active');
+            }
+            
+            // 关闭移动端菜单
+            if (window.innerWidth <= 768) {
+                mainNav.classList.remove('active');
+            }
+        }
+
+        // 生成热门路线（首页）
+        function generateHotRoutes() {
+            // 选择前三项作为热门路线
+            const hotRoutes = hikingRoutes.slice(0, 3);
+            
+            routesGrid.innerHTML = hotRoutes.map(route => `
+                <div class="route-card" data-id="${route.id}">
+                    <img src="${route.image}" alt="${route.title}" class="route-img">
+                    <div class="route-content">
+                        <span class="route-tag">${getDifficultyText(route.difficulty)}</span>
+                        <h3>${route.title}</h3>
+                        <p>${route.intro.substring(0, 80)}...</p>
+                        <div class="route-meta">
+                            <span><i class="fas fa-route"></i> ${route.length}公里</span>
+                            <span><i class="far fa-clock"></i> ${route.duration}小时</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // 为热门路线卡片添加点击事件
+            document.querySelectorAll('.route-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const routeId = parseInt(this.dataset.id);
+                    const route = hikingRoutes.find(r => r.id === routeId);
+                    if (route) {
+                        currentRoute = route;
+                        showPage('detail');
+                    }
+                });
+            });
+        }
+
+        // 生成路线列表
+        function generateRouteList(filter = 'all') {
+            // 筛选路线
+            let filteredRoutes = hikingRoutes;
+            if (filter !== 'all') {
+                if (filter === 'forest' || filter === 'mountain') {
+                    // 标签筛选
+                    filteredRoutes = hikingRoutes.filter(route => 
+                        route.tags.some(tag => 
+                            tag.includes(filter === 'forest' ? '森林' : '山') || 
+                            tag.includes(filter === 'forest' ? '竹' : '峰')
+                        )
+                    );
+                } else {
+                    // 难度筛选
+                    filteredRoutes = hikingRoutes.filter(route => route.difficulty === filter);
+                }
+            }
+            
+            // 生成列表HTML
+            itemsList.innerHTML = filteredRoutes.map(route => `
+                <div class="item-card" data-id="${route.id}">
+                    <img src="${route.image}" alt="${route.title}" class="item-img">
+                    <div class="item-content">
+                        <span class="item-tag">${getDifficultyText(route.difficulty)}</span>
+                        <h3>${route.title}</h3>
+                        <p>${route.intro}</p>
+                        <div class="item-meta">
+                            <span><i class="fas fa-route"></i> ${route.length}公里</span>
+                            <span><i class="fas fa-mountain"></i> 爬升${route.elevation}米</span>
+                            <span><i class="far fa-clock"></i> ${route.duration}小时</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // 为列表卡片添加点击事件
+            document.querySelectorAll('.item-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const routeId = parseInt(this.dataset.id);
+                    const route = hikingRoutes.find(r => r.id === routeId);
+                    if (route) {
+                        currentRoute = route;
+                        showPage('detail');
+                    }
+                });
+            });
+        }
+
+        // 更新详情页内容
+        function updateDetailPage() {
+            // 更新基本信息
+            document.getElementById('detail-hero-img').src = currentRoute.image;
+            document.getElementById('detail-title').textContent = currentRoute.title;
+            document.getElementById('detail-intro').textContent = currentRoute.intro;
+            document.getElementById('detail-length').textContent = currentRoute.length;
+            document.getElementById('detail-duration').textContent = currentRoute.duration;
+            document.getElementById('detail-elevation').textContent = currentRoute.elevation;
+            document.getElementById('detail-difficulty').textContent = getDifficultyText(currentRoute.difficulty);
+            document.getElementById('detail-description').innerHTML = currentRoute.description;
+            document.getElementById('best-season').textContent = currentRoute.bestSeason;
+            document.getElementById('detail-notices').innerHTML = currentRoute.notices;
+            
+            // 更新标签
+            const tagsContainer = document.getElementById('detail-tags');
+            tagsContainer.innerHTML = currentRoute.tags.map(tag => 
+                `<span class="detail-tag">${tag}</span>`
+            ).join('');
+            
+            // 更新亮点列表
+            const highlightsList = document.getElementById('detail-highlights');
+            highlightsList.innerHTML = currentRoute.highlights.map(highlight => 
+                `<li>${highlight}</li>`
+            ).join('');
+            
+            // 更新装备列表
+            const equipmentList = document.getElementById('equipment-list');
+            equipmentList.innerHTML = currentRoute.equipment.map(item => 
+                `<li><i class="fas fa-check-circle"></i> ${item}</li>`
+            ).join('');
+            
+            // 更新地图
+            updateMap();
+        }
+
+        // 初始化地图
+        function initMap() {
+            if (!map) {
+                // 创建地图，初始位置为第一个路线位置
+                map = L.map('route-map').setView([currentRoute.location.lat, currentRoute.location.lng], 14);
+                
+                // 添加OpenStreetMap图层
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 18,
+                    minZoom: 10
+                }).addTo(map);
+                
+                // 添加地图控制按钮事件
+                document.getElementById('zoom-in').addEventListener('click', () => {
+                    map.zoomIn();
+                });
+                
+                document.getElementById('zoom-out').addEventListener('click', () => {
+                    map.zoomOut();
+                });
+                
+                document.getElementById('reset-map').addEventListener('click', () => {
+                    map.setView([currentRoute.location.lat, currentRoute.location.lng], 14);
+                });
+            }
+            
+            drawRouteOnMap();
+        }
+
+        // 在地图上绘制路线
+        function drawRouteOnMap() {
+            // 清除之前的路线和标记
+            if (routeLayer) {
+                map.removeLayer(routeLayer);
+            }
+            if (startMarker) {
+                map.removeLayer(startMarker);
+            }
+            if (endMarker) {
+                map.removeLayer(endMarker);
+            }
+            
+            // 绘制路线
+            routeLayer = L.polyline(currentRoute.routePath, {
+                color: '#3498db',
+                weight: 4,
+                opacity: 0.8,
+                lineJoin: 'round'
+            }).addTo(map);
+            
+            // 添加起点标记
+            const startPoint = currentRoute.routePath[0];
+            startMarker = L.marker(startPoint, {
+                icon: L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color:#2ecc71; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 0 5px rgba(0,0,0,0.5);"></div>`,
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 13]
+                })
+            }).addTo(map);
+            startMarker.bindPopup("<b>起点</b>").openPopup();
+            
+            // 添加终点标记
+            const endPoint = currentRoute.routePath[currentRoute.routePath.length - 1];
+            endMarker = L.marker(endPoint, {
+                icon: L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color:#e74c3c; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 0 5px rgba(0,0,0,0.5);"></div>`,
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 13]
+                })
+            }).addTo(map);
+            endMarker.bindPopup("<b>终点</b>");
+            
+            // 调整地图视图以适应路线
+            map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
+        }
+
+        // 更新地图
+        function updateMap() {
+            // 如果地图还未初始化，先初始化
+            if (!map) {
+                initMap();
+            } else {
+                // 否则直接绘制新路线
+                drawRouteOnMap();
+            }
+        }
+
+        // 获取难度文本
+        function getDifficultyText(difficulty) {
+            switch(difficulty) {
+                case 'easy': return '轻松';
+                case 'medium': return '中等';
+                case 'hard': return '挑战';
+                default: return '未知';
+            }
+        }
+
+        // 绑定事件监听器
+        function bindEvents() {
+            // 导航链接点击事件
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const pageId = this.dataset.page;
+                    showPage(pageId);
+                });
+            });
+            
+            // 筛选按钮点击事件
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // 移除其他按钮的active类
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    
+                    // 为当前按钮添加active类
+                    this.classList.add('active');
+                    
+                    // 生成筛选后的列表
+                    const filter = this.dataset.filter;
+                    generateRouteList(filter);
+                });
+            });
+            
+            // 移动端菜单按钮点击事件
+            mobileMenuBtn.addEventListener('click', function() {
+                mainNav.classList.toggle('active');
+            });
+            
+            // 点击页面其他区域关闭移动菜单
+            document.addEventListener('click', function(e) {
+                if (window.innerWidth <= 768 && 
+                    !e.target.closest('#mainNav') && 
+                    !e.target.closest('#mobileMenuBtn') &&
+                    mainNav.classList.contains('active')) {
+                    mainNav.classList.remove('active');
+                }
+            });
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+</body>
+</html>
